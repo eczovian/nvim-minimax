@@ -235,7 +235,7 @@ end)
 -- - `:h MiniFiles-examples` - examples of common setups
 now_if_args(function()
   -- Enable directory/file preview
-  require('mini.files').setup({ windows = { preview = true } })
+  require('mini.files').setup({ windows = { preview = true, width_preview = 50 } })
 
   -- Add common bookmarks for every explorer. Example usage inside explorer:
   -- - `'c` to navigate into your config directory
@@ -503,7 +503,7 @@ later(function()
     highlighters = {
       -- Highlight a fixed set of common words. Will be highlighted in any place,
       -- not like "only in comments".
-      fixme = hi_words({ 'FIXME', 'Fixme', 'fixme' }, 'MiniHipatternsFixme'),
+      fix = hi_words({ 'FIX', 'Fix', 'fix' }, 'MiniHipatternsFixme'),
       hack = hi_words({ 'HACK', 'Hack', 'hack' }, 'MiniHipatternsHack'),
       todo = hi_words({ 'TODO', 'Todo', 'todo' }, 'MiniHipatternsTodo'),
       note = hi_words({ 'NOTE', 'Note', 'note' }, 'MiniHipatternsNote'),
