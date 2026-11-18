@@ -627,28 +627,8 @@ end)
 -- - `:h MiniPick.builtin` and `:h MiniExtra.pickers` - available pickers;
 --   Execute one either with Lua function, `:Pick <picker-name>` command, or
 --   one of `<Leader>f` mappings defined in 'plugin/20_keymaps.lua'
-local send_to_trouble = function()
-  local items = MiniPick.get_picker_matches()
-  if not items then return end
 
-  -- Use marked items if available; otherwise fall back to all matched items
-  local target_items = #items.marked > 0 and items.marked or items.all
-  MiniPick.default_choose_marked(target_items)
-
-  -- Close the default quickfix window and open Trouble instead
-  vim.schedule(function()
-    vim.cmd('cclose')
-    require('trouble').open('qflist')
-  end)
-end
-
-later(function() require('mini.pick').setup({
-  mappings={
-    send_marked_to_trouble = {char = '<C-q>', func = send_to_trouble},
-    choose_marked = "<C-CR>"
-  }
-}) end)
-
+-- mini pick config moved to 51_mini_files_side_preview
 
 -- Split and join arguments (regions inside brackets between allowed separators).
 -- It uses Lua patterns to find arguments, which means it works in comments and
