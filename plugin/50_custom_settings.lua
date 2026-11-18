@@ -440,3 +440,35 @@ Config.now_if_args(
   --   })
   -- end
 )
+Config.later(
+  function()
+  -- Show all installed plugins and whether they are
+  -- currently running or not
+  vim.api.nvim_create_user_command('ShowPlugins', function()
+    local buf = vim.api.nvim_create_buf(false, true)
+    local _win = vim.api.nvim_open_win(buf, true, {
+      relative = 'editor',
+      width = vim.o.columns,
+      height = vim.o.lines,
+      col = 0,
+      row = 0,
+      zindex = 1,
+    })
+    local output_lines = vim
+      .iter(vim.pack.get())
+      :map(function(value)
+        return {
+          '---',
+          string.format('Name: %s', value.spec.name),
+          string.format('Active: %s', value.active and 'Yes' or 'No'),
+          string.format('Branch: %s, Revision: %s', value.branches[1], value.rev),
+          '',
+        }
+      end)
+      :flatten()
+      :totable()
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, output_lines)
+  end, { nargs = 0 })
+
+  end
+)

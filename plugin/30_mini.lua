@@ -26,22 +26,6 @@
 -- - Everything else is delayed until the first draw with `later()`.
 local now, now_if_args, later = Config.now, Config.now_if_args, Config.later
 
--- Step one ===================================================================
--- Enable 'minischeme' color scheme. It comes with 'mini.nvim' and uses 'mini.hues'.
---
--- See also:
--- - `:h mini.nvim-color-schemes` - list of other color schemes
--- - `:h MiniHues-examples` - how to define highlighting with 'mini.hues'
--- - 'plugin/40_plugins.lua' honorable mentions - other good color schemes
-now(function() vim.cmd('colorscheme minischeme') end)
-
--- You can try these other 'mini.hues'-based color schemes (uncomment with `gcc`):
--- now(function() vim.cmd('colorscheme miniwinter') end)
--- now(function() vim.cmd('colorscheme minispring') end)
--- now(function() vim.cmd('colorscheme minisummer') end)
--- now(function() vim.cmd('colorscheme miniautumn') end)
--- now(function() vim.cmd('colorscheme randomhue') end)
-
 -- Common configuration presets. Example usage:
 -- - `<C-s>` in Insert mode - save and go to Normal mode
 -- - `go` / `gO` - insert empty line before/after in Normal mode
@@ -59,6 +43,8 @@ now(function()
     -- Manage options in 'plugin/10_options.lua' for didactic purposes
     options = { basic = false },
     mappings = {
+      -- turn off '\' based bin for option toggles
+      option_toggle_prefix = '',
       -- Create `<C-hjkl>` mappings for window navigation
       windows = true,
       -- Create `<M-hjkl>` mappings for navigation in Insert and Command modes
@@ -125,7 +111,10 @@ now(function() require('mini.starter').setup() end)
 -- See also:
 -- - `:h MiniStatuscolumn.config` - general overview of available configuration.
 -- - `:h MiniStatuscolumn.gen_content.main()` - simplified content customization.
-now(function() require('mini.statuscolumn').setup() end)
+
+-- I tured this off because it was annoying
+
+-- now(function() require('mini.statuscolumn').setup() end)
 
 -- Statusline. Sets `:h 'statusline'` to show more info in a line below window.
 -- Example usage:
@@ -147,62 +136,6 @@ now(function() require('mini.tabline').setup() end)
 -- Step one or two ============================================================
 -- Load now if Neovim is started like `nvim -- path/to/file`, otherwise - later.
 -- This ensures a correct behavior for files opened during startup.
-
--- Completion and signature help. Implements async "two stage" autocompletion:
--- - Based on attached LSP servers that support completion.
--- - Fallback (based on built-in keyword completion) if there is no LSP candidates.
---
--- Example usage in Insert mode with attached LSP:
--- - Start typing text that should be recognized by LSP (like variable name).
--- - After 100ms a popup menu with candidates appears.
--- - Press `<Tab>` / `<S-Tab>` to navigate down/up the list. These are set up
---   in 'mini.keymap'. You can also use `<C-n>` / `<C-p>`.
--- - During navigation there is an info window to the right showing extra info
---   that the LSP server can provide about the candidate. It appears after the
---   candidate stays selected for 100ms. Use `<C-f>` / `<C-b>` to scroll it.
--- - Navigating to an entry also changes buffer text. If you are happy with it,
---   keep typing after it. To discard completion completely, press `<C-e>`.
--- - After pressing special trigger(s), usually `(`, a window appears that shows
---   the signature of the current function/method. It gets updated as you type
---   showing the currently active parameter.
---
--- Example usage in Insert mode without an attached LSP or in places not
--- supported by the LSP (like comments):
--- - Start typing a word that is present in current or opened buffers.
--- - After 100ms popup menu with candidates appears.
--- - Navigate with `<Tab>` / `<S-Tab>` or `<C-n>` / `<C-p>`. This also updates
---   buffer text. If happy with choice, keep typing. Stop with `<C-e>`.
---
--- It also works with snippet candidates provided by LSP server. Best experience
--- when paired with 'mini.snippets' (which is set up in this file).
-now_if_args(function()
-  -- Customize post-processing of LSP responses for a better user experience.
-  -- Don't show 'Text' suggestions (usually noisy) and show snippets last.
-  local process_items_opts = { kind_priority = { Text = -1, Snippet = 99 } }
-  local process_items = function(items, base)
-    return MiniCompletion.default_process_items(items, base, process_items_opts)
-  end
-  require('mini.completion').setup({
-    lsp_completion = {
-      -- Without this config autocompletion is set up through `:h 'completefunc'`.
-      -- Although not needed, setting up through `:h 'omnifunc'` is cleaner
-      -- (sets up only when needed) and makes it possible to use `<C-u>`.
-      source_func = 'omnifunc',
-      auto_setup = false,
-      process_items = process_items,
-    },
-  })
-
-  -- Set 'omnifunc' for LSP completion only when needed.
-  local on_attach = function(ev)
-    vim.bo[ev.buf].omnifunc = 'v:lua.MiniCompletion.completefunc_lsp'
-  end
-  Config.new_autocmd('LspAttach', nil, on_attach, "Set 'omnifunc'")
-
-  -- Advertise to servers that Neovim now supports certain set of completion and
-  -- signature features through 'mini.completion'.
-  vim.lsp.config('*', { capabilities = MiniCompletion.get_lsp_capabilities() })
-end)
 
 -- Navigate and manipulate file system
 --
@@ -235,7 +168,7 @@ end)
 -- - `:h MiniFiles-examples` - examples of common setups
 now_if_args(function()
   -- Enable directory/file preview
-  require('mini.files').setup({ windows = { preview = true, width_preview = 50 } })
+  require('mini.files').setup({ windows = { preview = true, width_preview = 80 } })
 
   -- Add common bookmarks for every explorer. Example usage inside explorer:
   -- - `'c` to navigate into your config directory
@@ -422,12 +355,6 @@ later(function()
   })
 end)
 
--- Command line tweaks. Improves command line editing with:
--- - Autocompletion. Basically an automated `:h cmdline-completion`.
--- - Autocorrection of words as-you-type. Like `:W`->`:w`, `:lau`->`:lua`, etc.
--- - Autopeek command range (like line number at the start) as-you-type.
-later(function() require('mini.cmdline').setup() end)
-
 -- Tweak and save any color scheme. Contains utility functions to work with
 -- color spaces and color schemes. Example usage:
 -- - `:Colorscheme default` - switch with animation to the default color scheme
@@ -488,7 +415,7 @@ later(function() require('mini.diff').setup() end)
 -- - `:h MiniGit-examples` - examples of common setups
 -- - `:h :Git` - more details about `:Git` user command
 -- - `:h MiniGit.show_at_cursor()` - what information at cursor is shown
-later(function() require('mini.git').setup() end)
+-- later(function() require('mini.git').setup() end)
 
 -- Highlight patterns in text. Like `TODO`/`NOTE` or color hex codes.
 -- Example usage:
@@ -583,14 +510,6 @@ later(function() require('mini.jump2d').setup() end)
 -- - `:h MiniKeymap.map_combo()` - map combo
 later(function()
   require('mini.keymap').setup()
-  -- Navigate 'mini.completion' menu with `<Tab>` /  `<S-Tab>`
-  MiniKeymap.map_multistep('i', '<Tab>', { 'pmenu_next' })
-  MiniKeymap.map_multistep('i', '<S-Tab>', { 'pmenu_prev' })
-  -- On `<CR>` try to accept current completion item, fall back to accounting
-  -- for pairs from 'mini.pairs'
-  MiniKeymap.map_multistep('i', '<CR>', { 'pmenu_accept', 'minipairs_cr' })
-  -- On `<BS>` just try to account for pairs from 'mini.pairs'
-  MiniKeymap.map_multistep('i', '<BS>', { 'minipairs_bs' })
 end)
 
 -- Window with text overview. It is displayed on the right hand side. Can be used
@@ -708,76 +627,28 @@ end)
 -- - `:h MiniPick.builtin` and `:h MiniExtra.pickers` - available pickers;
 --   Execute one either with Lua function, `:Pick <picker-name>` command, or
 --   one of `<Leader>f` mappings defined in 'plugin/20_keymaps.lua'
-later(function() require('mini.pick').setup() end)
+local send_to_trouble = function()
+  local items = MiniPick.get_picker_matches()
+  if not items then return end
 
--- Manage and expand snippets (templates for a frequently used text).
--- Typical workflow is to type snippet's (configurable) prefix and expand it
--- into a snippet session.
---
--- How to manage snippets:
--- - 'mini.snippets' itself doesn't come with preconfigured snippets. Instead there
---   is a flexible system of how snippets are prepared before expanding.
---   They can come from pre-defined path on disk, 'snippets/' directories inside
---   config or plugins, defined inside `setup()` call directly.
--- - This config, however, does come with snippet configuration:
---     - 'snippets/global.json' is a file with global snippets that will be
---       available in any buffer
---     - 'after/snippets/lua.json' defines personal snippets for Lua language
---     - 'friendly-snippets' plugin configured in 'plugin/40_plugins.lua' provides
---       a collection of language snippets
---
--- How to expand a snippet in Insert mode:
--- - If you know snippet's prefix, type it as a word and press `<C-j>`. Snippet's
---   body should be inserted instead of the prefix.
--- - If you don't remember snippet's prefix, type only part of it (or none at all)
---   and press `<C-j>`. It should show picker with all snippets that have prefixes
---   matching typed characters (or all snippets if none was typed).
---   Choose one and its body should be inserted instead of previously typed text.
---
--- How to navigate during snippet session:
--- - Snippets can contain tabstops - places for user to interactively adjust text.
---   Each tabstop is highlighted depending on session progression - whether tabstop
---   is current, was or was not visited. If tabstop doesn't yet have text, it is
---   visualized with special "ghost" inline text: • and ∎ by default.
--- - Type necessary text at current tabstop and navigate to next/previous one
---   by pressing `<C-l>` / `<C-h>`.
--- - Repeat previous step until you reach special final tabstop, usually denoted
---   by ∎ symbol. If you spotted a mistake in an earlier tabstop, navigate to it
---   and return back to the final tabstop.
--- - To end a snippet session when at final tabstop, keep typing or go into
---   Normal mode. To force end snippet session, press `<C-c>`.
---
--- See also:
--- - `:h MiniSnippets-overview` - overview of how module works
--- - `:h MiniSnippets-examples` - examples of common setups
--- - `:h MiniSnippets-session` - details about snippet session
--- - `:h MiniSnippets.gen_loader` - list of available loaders
-later(function()
-  -- Define language patterns to work better with 'friendly-snippets'
-  local latex_patterns = { 'latex/**/*.json', '**/latex.json' }
-  local lang_patterns = {
-    tex = latex_patterns,
-    plaintex = latex_patterns,
-    -- Recognize special injected language of markdown tree-sitter parser
-    markdown_inline = { 'markdown.json' },
+  -- Use marked items if available; otherwise fall back to all matched items
+  local target_items = #items.marked > 0 and items.marked or items.all
+  MiniPick.default_choose_marked(target_items)
+
+  -- Close the default quickfix window and open Trouble instead
+  vim.schedule(function()
+    vim.cmd('cclose')
+    require('trouble').open('qflist')
+  end)
+end
+
+later(function() require('mini.pick').setup({
+  mappings={
+    send_marked_to_trouble = {char = '<C-q>', func = send_to_trouble},
+    choose_marked = "<C-CR>"
   }
+}) end)
 
-  local snippets = require('mini.snippets')
-  local config_path = vim.fn.stdpath('config')
-  snippets.setup({
-    snippets = {
-      -- Always load 'snippets/global.json' from config directory
-      snippets.gen_loader.from_file(config_path .. '/snippets/global.json'),
-      -- Load from 'snippets/' directory of plugins, like 'friendly-snippets'
-      snippets.gen_loader.from_lang({ lang_patterns = lang_patterns }),
-    },
-  })
-
-  -- By default snippets available at cursor are not shown as candidates in
-  -- 'mini.completion' menu. This requires a dedicated in-process LSP server
-  -- that will provide them. To have that, uncomment next line (use `gcc`).
-  -- MiniSnippets.start_lsp_server()
-end)
 
 -- Split and join arguments (regions inside brackets between allowed separators).
 -- It uses Lua patterns to find arguments, which means it works in comments and
