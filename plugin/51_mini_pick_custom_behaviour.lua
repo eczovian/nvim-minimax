@@ -14,7 +14,9 @@ local preview = (function()
     cache.win_config = {}
   end
 
-  local function has_win() return state.win_id ~= nil and vim.api.nvim_win_is_valid(state.win_id) end
+  local function has_win()
+    return state.win_id ~= nil and vim.api.nvim_win_is_valid(state.win_id)
+  end
 
   local function create_buf()
     state.buf_id = vim.api.nvim_create_buf(false, true)
@@ -100,14 +102,18 @@ local preview = (function()
     end
   end
 
-  local function setup(opts) config = vim.tbl_deep_extend("force", config, opts or {}) end
+  local function setup(opts)
+    config = vim.tbl_deep_extend("force", config, opts or {})
+  end
 
   local function scroll(direction)
     if not has_win() then
       return
     end
     local keys = vim.api.nvim_replace_termcodes(scroll_map[direction], true, true, true)
-    vim.api.nvim_win_call(state.win_id, function() vim.cmd("normal! " .. keys) end)
+    vim.api.nvim_win_call(state.win_id, function()
+      vim.cmd("normal! " .. keys)
+    end)
   end
 
   local function cache_win_config()
@@ -167,6 +173,16 @@ local preview = (function()
     reset()
   end
 
+  local function hide()
+    MiniPick.refresh()
+    state.is_hidden = true
+    update()
+  end
+  local function show()
+    MiniPick.refresh()
+    state.is_hidden = false
+  end
+
   -- Update preview on picker refresh
   local mini_pick = require("mini.pick")
   local mini_pick_refresh = mini_pick.refresh
@@ -185,6 +201,8 @@ local preview = (function()
     update = update,
     toggle = toggle,
     stop = stop,
+    hide = hide,
+    show = show
   }
 end)()
 
@@ -202,7 +220,9 @@ vim.api.nvim_create_autocmd("User", {
 vim.api.nvim_create_autocmd("User", {
   pattern = "MiniPickMatch",
   group = group,
-  callback = function() vim.schedule(preview.update) end,
+  callback = function()
+    vim.schedule(preview.update)
+  end,
 })
 
 vim.api.nvim_create_autocmd("User", {
@@ -222,7 +242,9 @@ local win_config = function()
   local height = math.floor(0.618 * vim.o.lines)
   local width = math.floor(0.618 * vim.o.columns)
   return {
-    anchor = 'NW', height = height, width = width,
+    anchor = "NW",
+    height = height,
+    width = width,
     row = math.floor(0.5 * (vim.o.lines - height)),
     col = math.floor(0.5 * (vim.o.columns - width)),
   }
@@ -230,7 +252,9 @@ end
 
 local send_to_trouble = function()
   local items = MiniPick.get_picker_matches()
-  if not items then return end
+  if not items then
+    return
+  end
 
   -- Use marked items if available; otherwise fall back to all matched items
   local target_items = #items.marked > 0 and items.marked or items.all
@@ -238,19 +262,19 @@ local send_to_trouble = function()
 
   -- Close the default quickfix window and open Trouble instead
   vim.schedule(function()
-    vim.cmd('cclose')
-    require('trouble').open('qflist')
+    vim.cmd("cclose")
+    require("trouble").open("qflist")
   end)
 end
 
 Config.now(function()
   require("mini.pick").setup({
     mappings = {
-      send_marked_to_trouble = {char = '<C-q>', func = send_to_trouble},
+      send_marked_to_trouble = { char = "<C-q>", func = send_to_trouble },
       choose_marked = "<C-CR>",
-      move_down  = '<M-n>',
-      move_start = '<M-g>',
-      move_up    = '<M-p>',
+      move_down = "<M-n>",
+      move_start = "<M-g>",
+      move_up = "<M-p>",
       move_down_alt = {
         char = "<C-n>",
         func = function()
@@ -274,14 +298,79 @@ Config.now(function()
       },
       scroll_side_preview_down = {
         char = "<S-Down>",
-        func = function() preview.scroll("down") end,
+        func = function()
+          preview.scroll("down")
+        end,
       },
-      scroll_side_preview_up = { char = "<S-Up>", func = function() preview.scroll("up") end },
+      scroll_side_preview_up = {
+        char = "<S-Up>",
+        func = function()
+          preview.scroll("up")
+        end,
+      },
       toggle_preview = "",
       toggle_side_preview = { char = "<Tab>", func = preview.toggle },
     },
     window = {
-      config = win_config
+      config = win_config,
     },
   })
 end)
+
+-- create a list of all keymaps to allow them to be searched via picker
+local pick_keymaps = function()
+  local keymap_encountered = {} -- used to make sure no duplicates are inserted into keymaps_table
+  local keymaps_table = {}
+  local max_len_lhs = 0
+
+  -- helper function to populate keymaps_table and determine max_len_lhs
+  local function extract_keymaps(keymaps, is_buf_local)
+    for _, keymap in pairs(keymaps) do
+      local keymap_key = keymap.buffer .. keymap.mode .. keymap.lhs -- should be distinct for every keymap
+      if not keymap_encountered[keymap_key] then
+        keymap_encountered[keymap_key] = true
+        keymap.lhs = string.gsub(keymap.lhs, vim.g.mapleader, "<Leader>")
+        if keymap.rhs ~= nil then
+          table.insert(keymaps_table, keymap)
+          max_len_lhs = math.max(max_len_lhs, string.len(keymap.lhs))
+        end
+      end
+    end
+  end
+
+  for _, mode in pairs({ "n", "v" }) do
+    local global = vim.api.nvim_get_keymap(mode)
+    local buf_local = vim.api.nvim_buf_get_keymap(0, mode)
+    extract_keymaps(global, false)
+    extract_keymaps(buf_local, true)
+  end
+  local items = {}
+  for _, keymap in ipairs(keymaps_table) do
+    keymap.text = string.format(
+      "%-4s | %-" .. tostring(max_len_lhs) .. "s | %s",
+      keymap.mode,
+      keymap.lhs,
+      keymap.desc or keymap.rhs
+    )
+    table.insert(items, keymap)
+  end
+  preview.hide()
+  MiniPick.start({
+    source = {
+      items = items,
+      choose = function(item)
+        if item.callback then
+          -- It's a Lua function mapping
+          item.callback()
+        elseif item.rhs then
+          -- It's a string/Vimscript mapping
+          local keys = vim.api.nvim_replace_termcodes(item.rhs, true, true, true)
+          local flags = item.noremap == 1 and "n" or "m"
+          vim.api.nvim_feedkeys(keys, flags, false)
+        end
+        preview.show()
+      end,
+    },
+  })
+end
+vim.keymap.set('n', '<Leader>' .. "sk", pick_keymaps, { desc = "Keymaps" })

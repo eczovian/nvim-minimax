@@ -11,13 +11,13 @@
 -- An example helper to create a Normal mode mapping
 local nmap = function(lhs, rhs, desc)
   -- See `:h vim.keymap.set()`
-  vim.keymap.set('n', lhs, rhs, { desc = desc })
+  vim.keymap.set("n", lhs, rhs, { desc = desc })
 end
 
 -- Paste linewise before/after current line
 -- Usage: `yiw` to yank a word and `]p` to put it on the next line.
-nmap('[p', '<Cmd>exe "iput! " . v:register<CR>', 'Paste Above')
-nmap(']p', '<Cmd>exe "iput "  . v:register<CR>', 'Paste Below')
+nmap("[p", '<Cmd>exe "iput! " . v:register<CR>', "Paste Above")
+nmap("]p", '<Cmd>exe "iput "  . v:register<CR>', "Paste Below")
 
 -- Many general mappings are created by 'mini.basics'. See 'plugin/30_mini.lua'
 
@@ -59,7 +59,6 @@ Config.leader_group_clues = {
   { mode = 'n', keys = '<Leader>S', desc = '+Session' },
   { mode = 'n', keys = '<Leader>t', desc = '+Terminal' },
   { mode = 'n', keys = '<Leader>v', desc = '+Visits' },
-
   { mode = 'x', keys = '<Leader>l', desc = '+Language' },
 }
 
@@ -132,6 +131,7 @@ nmap_leader('\\Q', explore_locations,                        'Location list')
 -- All these use 'mini.pick'. See `:h MiniPick-overview` for an overview.
 local pick_added_hunks_buf = '<Cmd>Pick git_hunks path="%" scope="staged"<CR>'
 local pick_workspace_symbols_live = '<Cmd>Pick lsp scope="workspace_symbol_live"<CR>'
+
 
 nmap_leader('s/', '<Cmd>Pick history scope="/"<CR>',            '"/" history')
 nmap_leader('s:', '<Cmd>Pick history scope=":"<CR>',            '":" history')
@@ -226,5 +226,43 @@ nmap_leader('vL', '<Cmd>lua MiniVisits.remove_label()<CR>',       'Remove label'
 -- custom stuffs
 
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+
+
+-- Bindings for the mini files buffer
+-- Bind 'S' to open in vertical split and
+-- Bind 'B' to open in horizontal split
+local map_split = function(buf_id, lhs, direction, close_explorer)
+  local rhs = function()
+    -- Make new window and set it as target
+    local cur_target = MiniFiles.get_explorer_state().target_window
+    local new_target = vim.api.nvim_win_call(cur_target, function()
+      vim.cmd(direction .. " split")
+      return vim.api.nvim_get_current_win()
+    end)
+
+    -- Set target window and go in
+    MiniFiles.set_target_window(new_target)
+    MiniFiles.go_in({close_on_file=close_explorer})
+  end
+
+  -- Adding `desc` will result into `show_help` entries
+  local desc = "Split " .. direction
+  vim.keymap.set("n", lhs, rhs, { buffer = buf_id, desc = desc })
+end
+
+vim.api.nvim_create_autocmd("User", {
+  pattern = "MiniFilesBufferCreate",
+  callback = function(args)
+    local buf_id = args.data.buf_id
+    -- Tweak keys to your liking
+    vim.b[buf_id].minisurround_disable = true
+    vim.b[buf_id].minioperators_disable = true
+    map_split(buf_id, "Z", "below horizontal", true)
+    map_split(buf_id, "<C-z>", "below horizontal", false)
+    map_split(buf_id, "S", "right vertical", true)
+    map_split(buf_id, "<C-s>", "right vertical", false)
+  end,
+})
+
 
 -- stylua: ignore end
